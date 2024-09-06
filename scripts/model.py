@@ -84,11 +84,7 @@ class GPT(nn.Module):
         
         tok_emb = self.tok_emb(x) # B, T, C
         pos_emb = self.pos_emb(torch.arange(T).to(self.device)) # T, C
-
         
-        
-
-
         x = tok_emb + pos_emb
         x = self.encoders(x)
         logits = self.lm_head(x)
@@ -103,12 +99,16 @@ class GPT(nn.Module):
         
         return logits, loss
 
+    def list_to_num(self, l):
+        return int(''.join(map(str, l)))
+
     def generate(self, get_batch):
-        
-        x, _ = get_batch(1, self.digits)
+        x, y = get_batch(1, self.digits)
         x = x[:, :(self.digits + 2)]
-        print(f"x: {x[:self.digits]} + {x[self.digits + 1:-1]}")
-        print(f"should be {_[0, -self.digits//2 + 1:]}")
+        print(f"x: {self.list_to_num(x[0,:self.digits//2].tolist())} + {self.list_to_num(x[0, self.digits//2+1:-1].tolist())}")
+        
+        y = [i.item() for i in y[0, -(self.digits//2 + 1):]]
+        print(f"should be {self.list_to_num(y[::-1])}")
         x = x.to(self.device)
         out = []
         for i in range((self.digits//2 + 1)):
@@ -116,14 +116,10 @@ class GPT(nn.Module):
             logits = logits[:, -1, :] # B, C
             probs = F.softmax(logits, dim=-1) # B, C
             sample1 = torch.multinomial(probs, 1).squeeze().squeeze().item() # B
-            # print(f"for x: {x}, guesed {sample1}")
-            out.append(str(sample1))
+            out.append(int(sample1))
             x = torch.cat([x, torch.tensor([[sample1]]).to(self.device)], dim=-1)
             
-
-
-        
-        
-        return ''.join(out[::-1])
+        print(f'Accuracy: {((torch.tensor(out[::-1]) == torch.tensor(y[::-1])).count_nonzero().item() / len(out))*100}%')
+        return self.list_to_num(out[::-1])
 
 
