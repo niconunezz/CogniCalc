@@ -9,7 +9,8 @@ from data import get_batch
 
 class Config:
     batch_size = 64
-    digits = 30
+    # the nums being added will have (digits//2) digits
+    digits = 80
     block_size = (3 * digits)//2 + 2
     n_embd = 384
     n_heads = 6
@@ -23,23 +24,22 @@ print(f"Using device: {config.device}")
 model = GPT(config).to(config.device)
 opt = torch.optim.Adam(model.parameters(), lr=3e-4)
 
-for i in tqdm(range(800)):
+for i in tqdm(range(1200)):
     x, y = get_batch(config.batch_size, config.digits)
     x, y = x.to(config.device), y.to(config.device)
 
     logits, loss = model(x, y)
-
-
-    
 
     opt.zero_grad()
     loss.backward()
     opt.step()
 
     if i % 100 == 0:
-        print(f"Loss: {loss.item()}")
+        print(f"\nLoss: {loss.item()}")
         
-
-
-out = model.generate(get_batch)
-print(f"Output: {out}")
+examples = 5
+for i in range(examples):
+    print("="*50)
+    out = model.generate(get_batch)
+    print(f"Model guessed: {out}")
+    print("="*50)
