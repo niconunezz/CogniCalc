@@ -17,27 +17,28 @@ def add_zeros(num: list, sze):
 
 def get_batch(batch_size, digits):
 
-    a = torch.randint(0, 9, (batch_size, digits//2))
-    b = torch.randint(0, 9, (batch_size, digits//2))
-    a = torch.column_stack([a, torch.zeros((batch_size,)).fill_(10)])
-    sm = torch.cat([a, b], dim=1)
-    sm = torch.column_stack([sm, torch.zeros((batch_size,)).fill_(11)])
+    a = torch.randint(0, 9, (batch_size, digits))
+    b = torch.randint(0, 9, (batch_size, digits))
+    a = torch.column_stack([a, torch.full((batch_size,), 10)])
+    sm = torch.cat([a, b], dim= 1)
+    sm = torch.column_stack([sm, torch.full((batch_size,), 11)])
     sums = []
     for t in sm:
-        sums.append(get_int(t[:digits//2]) + get_int(t[digits//2 + 1:-1]))
+        first_half = get_int(t[:digits])
+        second_half = get_int(t[digits+ 1:-1])
+        sums.append(first_half + second_half)
     
-    c = []
+    y = []
     for number in sums:
         splitednum = split_int(number)
-        if len(splitednum) < digits//2 + 1:
-            splitednum = add_zeros(splitednum, digits//2 + 1)
-        c.append(splitednum)
+        if len(splitednum) < (digits + 1):
+            splitednum = add_zeros(splitednum, digits + 1)
+        y.append(splitednum)
     
-    c = torch.tensor([i[::-1] for i in c])
-    sm = torch.column_stack([sm, c[:, :digits//2]])
-    c = torch.column_stack([torch.zeros((batch_size, sm.shape[1] - (digits//2)- 1)).fill_(12), c])
-    assert sm.shape == c.shape, f"Shapes do not match: {sm.shape} != {c.shape}"
-    return sm.long(),c.long()
+    y = torch.tensor([i[::-1] for i in y])
+    x = torch.column_stack([sm, y[:, :digits]])
+    y = torch.column_stack([torch.full((batch_size,x.shape[1] - digits- 1), 12), y])
 
-# x,y = get_batch(1, 10)
-# print(x.shape)
+    assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
+    return x.long(),y.long()
+
