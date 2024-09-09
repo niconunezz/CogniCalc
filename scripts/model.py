@@ -110,26 +110,28 @@ class GPT(nn.Module):
         # we ensure the model has never seen the input during training
         while self.tensor_in_list(x, seen_batches):
             x, y = get_batch(1, self.digits)
-            
         
-        x = x[:, :(self.digits + 2)]
-        first_half, second_half = map(lambda x: self.tensor_to_num(x), [x[0,:self.digits//2], x[0, self.digits//2+1:-1]])
+        
+        first_half, second_half = map(lambda x: self.tensor_to_num(x), [x[0,:self.digits], x[0, self.digits+1:2*self.digits+1]])
         print(f"x: {first_half} + {second_half}")
         
-        y = [i.item() for i in y[0, -(self.digits//2 + 1):]]
+        y = [i.item() for i in y[0, -(self.digits+1):]]
         print(f"should be {self.tensor_to_num(torch.tensor(y[::-1]))}")
         x = x.to(self.device)
 
         out = []
-        for i in range((self.digits//2 + 1)):
-            logits, _ = self.forward(x) # B, T, C
-            logits = logits[:, -1, :] # B, C
-            probs = F.softmax(logits, dim=-1) # B, C
-            sample1 = torch.multinomial(probs, 1).squeeze().squeeze().item() # B
-            out.append(int(sample1))
-            x = torch.cat([x, torch.tensor([[sample1]]).to(self.device)], dim=-1)
-            
-        print(f'Accuracy: {((torch.tensor(out[::-1]) == torch.tensor(y[::-1])).count_nonzero().item() / len(out))*100}%')
+        
+        logits, _ = self.forward(x) # B, T, C
+        
+        logits = logits[:, -(self.digits + 1):, :] # B, self.digits + 1, C
+        probs = F.softmax(logits, dim=-1) # B, self.digits + 1, C
+        
+        sample = [torch.multinomial(probs[:,i], 1).squeeze().squeeze().item() for i in range(self.digits + 1)] # B, self.digits + 1
+        
+        for pred in sample:
+            out.append(int(pred))
+              
+        print(f'Accuracy: {((torch.tensor(out) == torch.tensor(y)).count_nonzero().item() / len(out))*100}%')
         return self.tensor_to_num(torch.tensor(out[::-1]))
 
 
