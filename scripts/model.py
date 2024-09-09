@@ -94,22 +94,32 @@ class GPT(nn.Module):
         else:
             B, T, C = logits.shape
             
-            
             loss = F.cross_entropy(logits.view(B*T, C), targets.view(B*T), ignore_index= 12)
         
         return logits, loss
 
-    def list_to_num(self, l):
-        return int(''.join(map(str, l)))
+    def tensor_to_num(self, l):
+        return int(''.join(map(str, l.tolist())))
+    
+    def tensor_in_list(self, tensor, tensor_list):
+        return any(torch.equal(tensor, t) for t in tensor_list)
 
-    def generate(self, get_batch):
+    def generate(self, get_batch, seen_batches):
+        
         x, y = get_batch(1, self.digits)
+        # we ensure the model has never seen the input during training
+        while self.tensor_in_list(x, seen_batches):
+            x, y = get_batch(1, self.digits)
+            
+        
         x = x[:, :(self.digits + 2)]
-        print(f"x: {self.list_to_num(x[0,:self.digits//2].tolist())} + {self.list_to_num(x[0, self.digits//2+1:-1].tolist())}")
+        first_half, second_half = map(lambda x: self.tensor_to_num(x), [x[0,:self.digits//2], x[0, self.digits//2+1:-1]])
+        print(f"x: {first_half} + {second_half}")
         
         y = [i.item() for i in y[0, -(self.digits//2 + 1):]]
-        print(f"should be {self.list_to_num(y[::-1])}")
+        print(f"should be {self.tensor_to_num(torch.tensor(y[::-1]))}")
         x = x.to(self.device)
+
         out = []
         for i in range((self.digits//2 + 1)):
             logits, _ = self.forward(x) # B, T, C
@@ -120,6 +130,6 @@ class GPT(nn.Module):
             x = torch.cat([x, torch.tensor([[sample1]]).to(self.device)], dim=-1)
             
         print(f'Accuracy: {((torch.tensor(out[::-1]) == torch.tensor(y[::-1])).count_nonzero().item() / len(out))*100}%')
-        return self.list_to_num(out[::-1])
+        return self.tensor_to_num(torch.tensor(out[::-1]))
 
 
