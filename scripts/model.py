@@ -100,38 +100,34 @@ class GPT(nn.Module):
 
     def tensor_to_num(self, l):
         return int(''.join(map(str, l.tolist())))
-    
-    def tensor_in_list(self, tensor, tensor_list):
-        return any(torch.equal(tensor, t) for t in tensor_list)
+            
 
-    def generate(self, get_batch, seen_batches):
+    def generate(self, get_batch, specials, special_labels):
         
-        x, y = get_batch(1, self.digits)
-        # we ensure the model has never seen the input during training
-        while self.tensor_in_list(x, seen_batches):
-            x, y = get_batch(1, self.digits)
-        
-        
-        first_half, second_half = map(lambda x: self.tensor_to_num(x), [x[0,:self.digits], x[0, self.digits+1:2*self.digits+1]])
-        print(f"x: {first_half} + {second_half}")
-        
-        y = [i.item() for i in y[0, -(self.digits+1):]]
-        print(f"should be {self.tensor_to_num(torch.tensor(y[::-1]))}")
-        x = x.to(self.device)
+        for x, y in zip(specials, special_labels):
+            print("="*50)
+            first_half, second_half = map(lambda x: self.tensor_to_num(x), [x[:self.digits], x[self.digits+1:2*self.digits+1]])
+            print(f"x: {first_half} + {second_half}")
+            
+            y = [i.item() for i in y[-(self.digits+1):]]
+            print(f"should be {self.tensor_to_num(torch.tensor(y[::-1]))}")
+            x = x.to(self.device)
 
-        out = []
-        
-        logits, _ = self.forward(x) # B, T, C
-        
-        logits = logits[:, -(self.digits + 1):, :] # B, self.digits + 1, C
-        probs = F.softmax(logits, dim=-1) # B, self.digits + 1, C
-        
-        sample = [torch.multinomial(probs[:,i], 1).squeeze().squeeze().item() for i in range(self.digits + 1)] # B, self.digits + 1
-        
-        for pred in sample:
-            out.append(int(pred))
-              
-        print(f'Accuracy: {((torch.tensor(out) == torch.tensor(y)).count_nonzero().item() / len(out))*100}%')
-        return self.tensor_to_num(torch.tensor(out[::-1]))
+            out = []
+            
+            logits, _ = self.forward(x.unsqueeze(0)) # B, T, C
+            
+            logits = logits[:, -(self.digits + 1):, :] # B, self.digits + 1, C
+            probs = F.softmax(logits, dim=-1) # B, self.digits + 1, C
+            
+            sample = [torch.multinomial(probs[:,i], 1).squeeze().squeeze().item() for i in range(self.digits + 1)] # B, self.digits + 1
+            
+            for pred in sample:
+                out.append(int(pred))
+                
+            print(f'Accuracy: {((torch.tensor(out) == torch.tensor(y)).count_nonzero().item() / len(out))*100}%')
+            out =  self.tensor_to_num(torch.tensor(out[::-1]))
+            print(f"Model guessed: {out}")
+            print("="*50)
 
 
