@@ -15,29 +15,81 @@ def add_zeros(num: list, sze):
         num = [0] + num
     return num
 
-def get_batch(batch_size, digits):
 
-    a = torch.randint(0, 9, (batch_size, digits))
-    b = torch.randint(0, 9, (batch_size, digits))
-    a = torch.column_stack([a, torch.full((batch_size,), 10)])
+def get_val_data(samples: int, digits: int):
+    
+    a = torch.randint(0, 9, (samples, digits))
+    b = torch.randint(0, 9, (samples, digits))
+    a = torch.column_stack([a, torch.full((samples,), 10)])
     sm = torch.cat([a, b], dim= 1)
-    sm = torch.column_stack([sm, torch.full((batch_size,), 11)])
+    sm = torch.column_stack([sm, torch.full((samples,), 11)])
     sums = []
     for t in sm:
         first_half = get_int(t[:digits])
         second_half = get_int(t[digits+ 1:-1])
         sums.append(first_half + second_half)
-    
+        
     y = []
     for number in sums:
         splitednum = split_int(number)
         if len(splitednum) < (digits + 1):
             splitednum = add_zeros(splitednum, digits + 1)
         y.append(splitednum)
-    
+        
     y = torch.tensor([i[::-1] for i in y])
     x = torch.column_stack([sm, y[:, :digits]])
-    y = torch.column_stack([torch.full((batch_size,x.shape[1] - digits- 1), 12), y])
+    y = torch.column_stack([torch.full((samples,x.shape[1] - digits- 1), 12), y])
+
+    
+    assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
+    return x.long(),y.long()
+
+
+
+
+
+def discriminate(t, specials):
+    for i in t:
+        for special in specials:
+            if torch.all(torch.eq(i, special)):
+                print(f"Special batch found: {i}")
+                print("="*50)
+                return False
+    
+    return True
+
+def get_batch(batch_size, digits, specials):
+    g = False
+    
+    # we ensure the model has never seen some numbers during training
+    while not g:
+        
+        a = torch.randint(0, 9, (batch_size, digits))
+        b = torch.randint(0, 9, (batch_size, digits))
+        a = torch.column_stack([a, torch.full((batch_size,), 10)])
+        sm = torch.cat([a, b], dim= 1)
+        sm = torch.column_stack([sm, torch.full((batch_size,), 11)])
+        sums = []
+        for t in sm:
+            first_half = get_int(t[:digits])
+            second_half = get_int(t[digits+ 1:-1])
+            sums.append(first_half + second_half)
+        
+        y = []
+        for number in sums:
+            splitednum = split_int(number)
+            if len(splitednum) < (digits + 1):
+                splitednum = add_zeros(splitednum, digits + 1)
+            y.append(splitednum)
+        
+        y = torch.tensor([i[::-1] for i in y])
+        x = torch.column_stack([sm, y[:, :digits]])
+        y = torch.column_stack([torch.full((batch_size,x.shape[1] - digits- 1), 12), y])
+
+        # returns false if any tensor of x is in specials
+        g = discriminate(x, specials)
+
+    
 
     assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
     return x.long(),y.long()
