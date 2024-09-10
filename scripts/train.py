@@ -4,19 +4,20 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from model import GPT
 import matplotlib.pyplot as plt
-from data import get_batch
+from data import get_batch, get_val_data
 
 
 class Config:
     batch_size = 64
-    # the nums being added will have (digits//2) digits
+    # digits per number
     digits = 80
-    block_size = (3 * digits)//2 + 2
+    block_size = (3 * digits) + 2
     n_embd = 384
     n_heads = 6
     n_blocks = 6
     vocab_size = 13  # 0-9 para dígitos, 10 para '+', 11 para '=', 12 para ignore_index
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    samples = 10
 
 config = Config()
 print(f"Using device: {config.device}")
@@ -24,22 +25,28 @@ print(f"Using device: {config.device}")
 model = GPT(config).to(config.device)
 opt = torch.optim.Adam(model.parameters(), lr=3e-4)
 
-for i in tqdm(range(1200)):
-    x, y = get_batch(config.batch_size, config.digits)
+
+losses = []
+
+specials, specials_labels = get_val_data(config.samples, config.digits)
+for i in tqdm(range(1000)):
+    x, y = get_batch(config.batch_size, config.digits, specials)
+    
     x, y = x.to(config.device), y.to(config.device)
 
     logits, loss = model(x, y)
-
+    losses.append(loss.item())
     opt.zero_grad()
     loss.backward()
     opt.step()
 
     if i % 100 == 0:
         print(f"\nLoss: {loss.item()}")
-        
-examples = 5
-for i in range(examples):
-    print("="*50)
-    out = model.generate(get_batch)
-    print(f"Model guessed: {out}")
-    print("="*50)
+
+
+
+plt.plot(losses)
+plt.savefig("loss.png")
+plt.show()
+
+model.generate(get_batch, specials, specials_labels)
