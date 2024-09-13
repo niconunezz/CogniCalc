@@ -99,17 +99,19 @@ class GPT(nn.Module):
         return logits, loss
 
     def tensor_to_num(self, l):
-        return int(''.join(map(str, l.tolist())))
+        return int(''.join(map(str, l[1:].tolist()))) * (1 if l[0] != 13 else -1)
             
 
     def generate(self, get_batch, specials, special_labels):
         
         for x, y in zip(specials, special_labels):
             print("="*50)
-            first_half, second_half = map(lambda x: self.tensor_to_num(x), [x[:self.digits], x[self.digits+1:2*self.digits+1]])
+            first_half, second_half = map(lambda x: self.tensor_to_num(x), [x[:self.digits+1], x[self.digits+2:2*self.digits+3]])
             print(f"x: {first_half} + {second_half}")
             
-            y = [i.item() for i in y[-(self.digits+1):]]
+            # print(f"y: {y}")
+            # print(f"x: {x}")
+            y = [i.item() for i in y[-(self.digits+2):]]
             print(f"should be {self.tensor_to_num(torch.tensor(y[::-1]))}")
             x = x.to(self.device)
 
@@ -117,10 +119,10 @@ class GPT(nn.Module):
             
             logits, _ = self.forward(x.unsqueeze(0)) # B, T, C
             
-            logits = logits[:, -(self.digits + 1):, :] # B, self.digits + 1, C
-            probs = F.softmax(logits, dim=-1) # B, self.digits + 1, C
+            logits = logits[:, -(self.digits + 2):, :] # B, self.digits + 2, C
+            probs = F.softmax(logits, dim=-1) # B, self.digits + 2, C
             
-            sample = [torch.multinomial(probs[:,i], 1).squeeze().squeeze().item() for i in range(self.digits + 1)] # B, self.digits + 1
+            sample = [torch.multinomial(probs[:,i], 1).squeeze().squeeze().item() for i in range(self.digits + 2)] # B, self.digits + 2
             
             for pred in sample:
                 out.append(int(pred))
