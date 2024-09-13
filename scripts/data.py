@@ -38,13 +38,11 @@ def preprocessed_batch(batch_size, digits):
         splitednum = split_int(number)
         if len(splitednum) < (digits + 2):
             splitednum = add_zeros(splitednum, digits + 2)
-        
-        print(f"Splited: {splitednum}")
         y.append(splitednum)
         
     y = torch.tensor([i[::-1] for i in y])
-    x = torch.column_stack([sm, y[:, :digits]])
-    y = torch.column_stack([torch.full((batch_size,x.shape[1] - digits- 1), 12), y])
+    x = torch.column_stack([sm, y[:, :digits+1]])
+    y = torch.column_stack([torch.full((batch_size,x.shape[1] - digits- 2), 12), y])
     return x, y
 
 def get_val_data(samples: int, digits: int):
@@ -73,12 +71,8 @@ def get_batch(batch_size, digits, specials):
     while not g:
         x, y = preprocessed_batch(batch_size, digits)
         # returns false if any tensor of x is in specials
-        print(f"x {x}")
-        print(f"y {y}")
         g = discriminate(x, specials)
 
     assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
     return x.long(), y.long()
 
-
-print(get_batch(1, 5, torch.randint(0, 15, (1, (4 * 5 + 5)))))
