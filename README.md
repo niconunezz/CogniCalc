@@ -14,7 +14,7 @@ This project is inspired by the exercises proposed in Karpathy's GPT video. The 
 - **train.py**: Main file, imports get_batch and the model, and performs the learning.
 
 **Current state:**
-Right now the model only supports addition; more operations are coming soon...
+Right now the model only supports addition on positive numbers. rn trying to include negative numbers (making addition with neg nums is equal to substacting), still cant get 100% accuracy ; more operations are coming soon...
 
 **Trying the model:**
 Start by creating and activating a virtual environment, then run:
