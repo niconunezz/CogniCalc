@@ -10,12 +10,13 @@ from data import get_batch, get_val_data
 class Config:
     batch_size = 64
     # digits per number
-    digits = 80
-    block_size = (3 * digits) + 2
+    digits = 20
+    # block_size = (4 * digits + 5)
+    block_size = 3 *digits + 6
     n_embd = 384
     n_heads = 6
     n_blocks = 6
-    vocab_size = 13  # 0-9 para dígitos, 10 para '+', 11 para '=', 12 para ignore_index
+    vocab_size = 15  # 0-9 para dígitos, 10 para '+', 11 para '=', 12 para ignore_index, 13 para '-', 14 para '+'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     samples = 10
 
@@ -29,7 +30,7 @@ opt = torch.optim.Adam(model.parameters(), lr=3e-4)
 losses = []
 
 specials, specials_labels = get_val_data(config.samples, config.digits)
-for i in tqdm(range(1000)):
+for i in tqdm(range(2450)):
     x, y = get_batch(config.batch_size, config.digits, specials)
     
     x, y = x.to(config.device), y.to(config.device)
