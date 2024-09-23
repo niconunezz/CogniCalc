@@ -29,7 +29,7 @@ opt = torch.optim.Adam(model.parameters(), lr=3e-4)
 losses = []
 
 specials, specials_labels = get_val_data(config.samples, config.digits)
-for i in tqdm(range(1000)):
+for i in tqdm(range(2000)):
     x, y = get_batch(config.batch_size, config.digits, specials)
     
     x, y = x.to(config.device), y.to(config.device)
@@ -49,4 +49,4 @@ plt.plot(losses)
 plt.savefig("loss.png")
 plt.show()
 
-model.generate(get_batch, specials, specials_labels)
+model.generate(specials, specials_labels)
