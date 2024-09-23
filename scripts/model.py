@@ -76,9 +76,13 @@ class GPT(nn.Module):
         self.device = config.device
         self.decoders = nn.Sequential(*[DecoderBlock(config) for _ in range(config.n_blocks)])
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size)
+
+        self.tok_emb.weight = self.lm_head.weight # weight sharing
+
         self.vocab_size = config.vocab_size
         self.block_size = config.block_size
         self.digits = config.digits
+
     def forward(self, x, targets=None):
         B, T = x.shape
         
@@ -94,6 +98,7 @@ class GPT(nn.Module):
         else:
             B, T, C = logits.shape
             
+            # ignore_index= 12 is the padding token, key for masking the loss
             loss = F.cross_entropy(logits.view(B*T, C), targets.view(B*T), ignore_index= 12)
         
         return logits, loss
