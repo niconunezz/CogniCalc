@@ -74,7 +74,7 @@ class GPT(nn.Module):
         self.tok_emb = nn.Embedding(config.vocab_size, config.n_embd)
         self.pos_emb = nn.Embedding(config.block_size, config.n_embd)
         self.device = config.device
-        self.encoders = nn.Sequential(*[DecoderBlock(config) for _ in range(config.n_blocks)])
+        self.decoders = nn.Sequential(*[DecoderBlock(config) for _ in range(config.n_blocks)])
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size)
         self.vocab_size = config.vocab_size
         self.block_size = config.block_size
@@ -86,7 +86,7 @@ class GPT(nn.Module):
         pos_emb = self.pos_emb(torch.arange(T).to(self.device)) # T, C
         
         x = tok_emb + pos_emb
-        x = self.encoders(x)
+        x = self.decoders(x)
         logits = self.lm_head(x)
 
         if targets is None:
@@ -102,7 +102,7 @@ class GPT(nn.Module):
         return int(''.join(map(str, l.tolist())))
             
 
-    def generate(self, get_batch, specials, special_labels):
+    def generate(self, specials, special_labels):
         
         for x, y in zip(specials, special_labels):
             print("="*50)
