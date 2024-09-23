@@ -5,8 +5,9 @@ from tqdm import tqdm
 from model import GPT
 import matplotlib.pyplot as plt
 from data import get_batch, get_val_data
+from dataclasses import dataclass
 
-
+@dataclass
 class Config:
     batch_size = 64
     # digits per number
@@ -23,6 +24,8 @@ config = Config()
 print(f"Using device: {config.device}")
 
 model = GPT(config).to(config.device)
+
+print(f"Model has {sum(p.numel() for p in model.parameters()):,} parameters")
 opt = torch.optim.Adam(model.parameters(), lr=3e-4)
 
 

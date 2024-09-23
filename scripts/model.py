@@ -46,6 +46,7 @@ class FeedForward(nn.Module):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(config.n_embd, 4 * config.n_embd),
+            #!nn.GELU(),
             nn.ReLU(),
             nn.Linear(4 * config.n_embd, config.n_embd)
         )
@@ -71,6 +72,8 @@ class DecoderBlock(nn.Module):
 class GPT(nn.Module):
     def __init__(self, config):
         super().__init__()
+        self.config = config
+
         self.tok_emb = nn.Embedding(config.vocab_size, config.n_embd)
         self.pos_emb = nn.Embedding(config.block_size, config.n_embd)
         self.device = config.device
@@ -79,9 +82,16 @@ class GPT(nn.Module):
 
         self.tok_emb.weight = self.lm_head.weight # weight sharing
 
-        self.vocab_size = config.vocab_size
-        self.block_size = config.block_size
-        self.digits = config.digits
+        self.apply(self._init_weights)
+        
+    
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, x, targets=None):
         B, T = x.shape
@@ -111,10 +121,10 @@ class GPT(nn.Module):
         
         for x, y in zip(specials, special_labels):
             print("="*50)
-            first_half, second_half = map(lambda x: self.tensor_to_num(x), [x[:self.digits], x[self.digits+1:2*self.digits+1]])
+            first_half, second_half = map(lambda x: self.tensor_to_num(x), [x[:self.config.digits], x[self.config.digits+1:2*self.config.digits+1]])
             print(f"x: {first_half} + {second_half}")
             
-            y = [i.item() for i in y[-(self.digits+1):]]
+            y = [i.item() for i in y[-(self.config.digits+1):]]
             print(f"should be {self.tensor_to_num(torch.tensor(y[::-1]))}")
             x = x.to(self.device)
 
@@ -122,10 +132,10 @@ class GPT(nn.Module):
             
             logits, _ = self.forward(x.unsqueeze(0)) # B, T, C
             
-            logits = logits[:, -(self.digits + 1):, :] # B, self.digits + 1, C
-            probs = F.softmax(logits, dim=-1) # B, self.digits + 1, C
+            logits = logits[:, -(self.config.digits + 1):, :] # B, self.config.digits + 1, C
+            probs = F.softmax(logits, dim=-1) # B, self.config.digits + 1, C
             
-            sample = [torch.multinomial(probs[:,i], 1).squeeze().squeeze().item() for i in range(self.digits + 1)] # B, self.digits + 1
+            sample = [torch.multinomial(probs[:,i], 1).squeeze().squeeze().item() for i in range(self.config.digits + 1)] # B, self.digits + 1
             
             for pred in sample:
                 out.append(int(pred))
