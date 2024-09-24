@@ -16,7 +16,7 @@ class Config:
     n_embd = 384
     n_heads = 6
     n_blocks = 6
-    vocab_size = 13  # 0-9 para dígitos, 10 para '+', 11 para '=', 12 para ignore_index
+    vocab_size = 16  # 0-9 para dígitos, 10 para '+', 11 para '=', 12 para ignore_index
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     samples = 10
 
@@ -32,7 +32,10 @@ opt = torch.optim.Adam(model.parameters(), lr=3e-4)
 losses = []
 
 specials, specials_labels = get_val_data(config.samples, config.digits)
-for i in tqdm(range(2000)):
+import time
+steps = 300
+for i in (range(steps)):
+    t0 = time.time()
     x, y = get_batch(config.batch_size, config.digits, specials)
     
     x, y = x.to(config.device), y.to(config.device)
@@ -42,9 +45,11 @@ for i in tqdm(range(2000)):
     opt.zero_grad()
     loss.backward()
     opt.step()
-
-    if i % 100 == 0:
-        print(f"\nLoss: {loss.item()}")
+    torch.cuda.synchronize()
+    t1 = time.time()
+    dt = (t1 - t0)*1000 # in ms
+    if i % (steps//10) == 0:
+        print(f"step {i}| loss: {loss.item()} | time {dt:.2f} ms")
 
 
 
@@ -52,4 +57,4 @@ plt.plot(losses)
 plt.savefig("loss.png")
 plt.show()
 
-model.generate(specials, specials_labels)
+model.generate(specials, specials_labels, verbose=False)
