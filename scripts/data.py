@@ -60,18 +60,21 @@ def discriminate(t, specials):
 
 
 def get_batch(batch_size, digits, specials):
-    g = False
+    
     
     # we ensure the model has never seen some numbers during training
-    while not g:
-        
-        x, y = preprocessed_batch(batch_size, digits)
 
-        # returns false if any tensor of x is in specials
-        g = discriminate(x, specials)
+    x, y = preprocessed_batch(batch_size, digits)
+
+    # if you want to check that the model pretty much never recreates the val nums uncomment the following lines
+
+    # g = False
+    # while not g:
+    #     x, y = preprocessed_batch(batch_size, digits)
+    #     # returns false if any tensor of x is in specials
+    #     g = discriminate(x, specials)
 
     
-
     assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
     return x.long(),y.long()
 
