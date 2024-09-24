@@ -33,7 +33,7 @@ losses = []
 
 specials, specials_labels = get_val_data(config.samples, config.digits)
 import time
-steps = 300
+steps = 2000
 for i in (range(steps)):
     t0 = time.time()
     x, y = get_batch(config.batch_size, config.digits, specials)
@@ -47,7 +47,7 @@ for i in (range(steps)):
     opt.step()
     torch.cuda.synchronize()
     t1 = time.time()
-    dt = (t1 - t0)*1000 # in ms
+    dt = (t1 - t0)*1000000 # in megaseconds
     if i % (steps//10) == 0:
         print(f"step {i}| loss: {loss.item()} | time {dt:.2f} ms")
 
@@ -57,4 +57,4 @@ plt.plot(losses)
 plt.savefig("loss.png")
 plt.show()
 
-model.generate(specials, specials_labels, verbose=False)
+model.generate(specials, specials_labels, verbose=True)
