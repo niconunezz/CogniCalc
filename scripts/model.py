@@ -46,13 +46,14 @@ class FeedForward(nn.Module):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(config.n_embd, 4 * config.n_embd),
-            #!nn.GELU(),
-            nn.ReLU(),
-            nn.Linear(4 * config.n_embd, config.n_embd)
+            nn.ReLU()
         )
+        self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd)
+        self.c_proj.NANO_GPT_SCALE_INIT = 1
+
 
     def forward(self, x):
-        return self.net(x)
+        return self.c_proj(self.net(x))
 
 class DecoderBlock(nn.Module):
     def __init__(self, config):
@@ -87,7 +88,10 @@ class GPT(nn.Module):
     
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            std = 0.02
+            if hasattr(module, 'NANO_GPT_SCALE_INIT'):
+                std *= (2 * self.config.n_blocks) ** -0.5
+            torch.nn.init.normal_(module.weight, mean=0.0, std=std)
             if module.bias is not None:
                 torch.nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Embedding):
@@ -117,15 +121,18 @@ class GPT(nn.Module):
         return int(''.join(map(str, l.tolist())))
             
 
-    def generate(self, specials, special_labels):
-        
+    def generate(self, specials, special_labels, verbose=True):
+        acc_count = 0
         for x, y in zip(specials, special_labels):
-            print("="*50)
+            if verbose:
+                print("="*50)
             first_half, second_half = map(lambda x: self.tensor_to_num(x), [x[:self.config.digits], x[self.config.digits+1:2*self.config.digits+1]])
-            print(f"x: {first_half} + {second_half}")
+            if verbose:
+                print(f"x: {first_half} + {second_half}")
             
             y = [i.item() for i in y[-(self.config.digits+1):]]
-            print(f"should be {self.tensor_to_num(torch.tensor(y[::-1]))}")
+            if verbose:
+                print(f"should be {self.tensor_to_num(torch.tensor(y[::-1]))}")
             x = x.to(self.device)
 
             out = []
@@ -139,10 +146,19 @@ class GPT(nn.Module):
             
             for pred in sample:
                 out.append(int(pred))
+            
+            out_tensor = torch.tensor(out[::-1])
+            out =  self.tensor_to_num(out_tensor)
+            
+            acc = ((out_tensor == torch.tensor(y[::-1])).count_nonzero().item() / len(out_tensor))*100
+            acc_count += acc
+            if verbose:
+                print(f'Accuracy: {acc}%')
+                print(f"Model guessed: {out}")
+                print("="*50)
+            
+        if not verbose:
+            print(f"Averaged accuracy: {acc_count/len(specials)}%")
                 
-            print(f'Accuracy: {((torch.tensor(out) == torch.tensor(y)).count_nonzero().item() / len(out))*100}%')
-            out =  self.tensor_to_num(torch.tensor(out[::-1]))
-            print(f"Model guessed: {out}")
-            print("="*50)
 
 
