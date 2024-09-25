@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from model import GPT
 import matplotlib.pyplot as plt
-from data import get_batch, get_val_data
+from data import DataLoaderLite
 from dataclasses import dataclass
 
 @dataclass
@@ -23,21 +23,25 @@ class Config:
 config = Config()
 print(f"Using device: {config.device}")
 
+
+train_loader = DataLoaderLite(config.batch_size, config.digits, config.samples)
+
+torch.set_float32_matmul_precision('high')
+
 model = GPT(config).to(config.device)
 
 print(f"Model has {sum(p.numel() for p in model.parameters()):,} parameters")
 opt = torch.optim.Adam(model.parameters(), lr=3e-4)
 
 
+
 losses = []
 
-specials, specials_labels = get_val_data(config.samples, config.digits)
 import time
-steps = 2000
+steps = 50
 for i in (range(steps)):
     t0 = time.time()
-    x, y = get_batch(config.batch_size, config.digits, specials)
-    
+    x, y = train_loader.get_batch()
     x, y = x.to(config.device), y.to(config.device)
 
     logits, loss = model(x, y)
@@ -47,9 +51,12 @@ for i in (range(steps)):
     opt.step()
     torch.cuda.synchronize()
     t1 = time.time()
-    dt = (t1 - t0)*1000000 # in megaseconds
-    if i % (steps//10) == 0:
-        print(f"step {i}| loss: {loss.item()} | time {dt:.2f} ms")
+    dt = (t1 - t0)*1000 # in megaseconds
+    # tokens_per_sec = (config.batch_size * config.block_size) / (dt/1000000)
+    # print(f"step {i}| loss: {loss.item()} | time {dt:.2f} ms | tokens/s {tokens_per_sec:.2f}")
+    if i % (steps//20) == 0:
+        tokens_per_sec = (config.batch_size * config.block_size) / (dt/1000000)
+        print(f"step {i}| loss: {loss.item()} | time {dt:.2f} ms | tokens/s {tokens_per_sec:.2f}")
 
 
 
@@ -57,4 +64,4 @@ plt.plot(losses)
 plt.savefig("loss.png")
 plt.show()
 
-model.generate(specials, specials_labels, verbose=True)
+model.generate(train_loader.specials, train_loader.specials_labels, verbose=False)
