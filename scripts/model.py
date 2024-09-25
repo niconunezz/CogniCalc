@@ -31,11 +31,12 @@ class AttentionHead(nn.Module):
         # divide in heads and transpose to get the right shape, making each head work as a batch that multiplies parallelly
         q, k, v = map(lambda t: t.view(B, T, self.n_heads, C//self.n_heads).transpose(1,2), qkv) # (B, n_heads, T, hs)
 
-        att = (q @ k.transpose(-2, -1)) * (1.0 / C ** 0.5)
-        att = att.masked_fill(self.mask[:, :, :T, :T] == 0, float('-inf'))
-        att = F.softmax(att, dim=-1)
-        y = att @ v
+        # att = (q @ k.transpose(-2, -1)) * (1.0 / C ** 0.5)
+        # att = att.masked_fill(self.mask[:, :, :T, :T] == 0, float('-inf'))
+        # att = F.softmax(att, dim=-1)
+        # y = att @ v
 
+        y = F.scaled_dot_product_attention(q, k, v, is_causal=True)
         # recombine heads and project out
         y = y.transpose(1, 2).contiguous().view(B, T, C)
 
