@@ -38,7 +38,7 @@ opt = torch.optim.Adam(model.parameters(), lr=3e-4)
 losses = []
 
 import time
-steps = 50
+steps = 850
 for i in (range(steps)):
     t0 = time.time()
     x, y = train_loader.get_batch()
@@ -49,15 +49,14 @@ for i in (range(steps)):
         logits, loss = model(x, y) 
     losses.append(loss.item())
     loss.backward()
+    norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
     opt.step()
     torch.cuda.synchronize()
     t1 = time.time()
-    dt = (t1 - t0)*1000 # in megaseconds
-    # tokens_per_sec = (config.batch_size * config.block_size) / (dt/1000000)
-    # print(f"step {i}| loss: {loss.item()} | time {dt:.2f} ms | tokens/s {tokens_per_sec:.2f}")
+    dt = (t1 - t0)*1000 # in ms
     if i % (steps//20) == 0:
-        tokens_per_sec = (config.batch_size * config.block_size) / (dt/1000000)
-        print(f"step {i}| loss: {loss.item()} | time {dt:.2f} ms | tokens/s {tokens_per_sec:.2f}")
+        tokens_per_sec = (config.batch_size * config.block_size) / (dt/1000)
+        print(f"step {i}| loss: {loss.item()} | time {dt:.2f} ms | norm: {norm:.4f} |  tokens/s {tokens_per_sec:.2f}")
 
 
 
