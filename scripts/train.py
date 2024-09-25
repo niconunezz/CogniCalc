@@ -44,9 +44,10 @@ for i in (range(steps)):
     x, y = train_loader.get_batch()
     x, y = x.to(config.device), y.to(config.device)
 
-    logits, loss = model(x, y)
-    losses.append(loss.item())
     opt.zero_grad()
+    with torch.autocast(device_type = "cuda", dtype=torch.bfloat16):
+        logits, loss = model(x, y) 
+    losses.append(loss.item())
     loss.backward()
     opt.step()
     torch.cuda.synchronize()
